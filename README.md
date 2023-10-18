@@ -1,4 +1,4 @@
-# Groot-BMI-Demo
+# Team Pynapples
 ME396P Package Presentation PyQt5
 Download all files in the same folder and run the bmi.py code.
 
