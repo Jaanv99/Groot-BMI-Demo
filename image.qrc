@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="images">
+    <file>baby_groot_1___transparent.png</file>
+    <file>babygroot1.png</file>
+  </qresource>
+</RCC>
