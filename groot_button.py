@@ -10,7 +10,7 @@ import sys
 
 # --------------------------------------------------------------------------
 
-# Version #1:
+# # Version #1:
 
 # # Subclass QMainWindow to customize your application's main window
 # class MainWindow(QMainWindow):
@@ -41,7 +41,7 @@ import sys
 
 # --------------------------------------------------------------------------
 
-# Version #2:
+# # Version #2:
 
 # # Subclass QMainWindow to customize your application's main window
 # class MainWindow(QMainWindow):
@@ -57,13 +57,8 @@ import sys
 #         # Set the central widget of the Window.
 #         self.setCentralWidget(button)
         
-#         # button.clicked.connect(self.close)
-        
 #         button.clicked.connect(self.setProfile)
-        
-#         # This defers the call to open the dialog after the main event loop has started
-#         # QTimer.singleShot(0, self.setProfile)
-        
+
 #     def setProfile(self):
 #         if QMessageBox.question(self, "I am Groot?", "I am groot?") != QMessageBox.No:
 #             qApp.quit()
