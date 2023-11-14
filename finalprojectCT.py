@@ -2,7 +2,7 @@
 """
 Created on Sun Nov 12 15:20:30 2023
 
-@author: jahna
+@author: Pynapples - Jahnavi, Anastasia, John
 """
 
 import os
