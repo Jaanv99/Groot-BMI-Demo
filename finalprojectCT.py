@@ -7,7 +7,6 @@ Created on Sun Nov 12 15:20:30 2023
 
 import os
 import sys
-import math
 import numpy as np
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtWidgets import QFileDialog
@@ -15,9 +14,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import pandas as pd
 from scipy.optimize import curve_fit
-from scipy.integrate import quad
-from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
+from scipy.stats import t
 
 qtcreator_file  = "CFA.ui" # Enter file here.
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtcreator_file)
@@ -97,6 +95,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
         # Type of Boundary Condition
         BC = self.BCspinBox.value()
         order = self.OrderSpinBox.value()
+        n = order
         custom = self.textequation.toPlainText()
         if custom == '':
             # PLot based on BC type and for order of equation input number
@@ -113,12 +112,23 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 max_id = list(data_smooth2[['y']].idxmax())[0]
                 print(max_id)
                 
-                # Split the original data set using the new max_id index:    
-                x_1 = self.x[:max_id].copy()
-                x_2 = self.x[max_id:].copy()
-                y_1 = self.y[:max_id].copy()
-                y_2 = self.y[max_id:].copy()
+                # Find the minimum point in the smoothed data set
+                min_id = list(data_smooth2[['y']].idxmin())[0]
+                print(min_id)
                 
+                if self.y[max_id] > self.y[0]:
+                    # Split the original data set using the new max_id index:    
+                    x_1 = self.x[:max_id].copy()
+                    x_2 = self.x[max_id:].copy()
+                    y_1 = self.y[:max_id].copy()
+                    y_2 = self.y[max_id:].copy()
+                else:
+                    # Split the original data set using the new min_id index:    
+                    x_1 = self.x[:min_id].copy()
+                    x_2 = self.x[min_id:].copy()
+                    y_1 = self.y[:min_id].copy()
+                    y_2 = self.y[min_id:].copy()
+                    
                 xp_1 = np.linspace(min(x_1), max(x_1), 50)
                 xp_2 = np.linspace(min(x_2), max(x_2), 50)
                 
@@ -136,7 +146,52 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 r2_1_l = r2_score(y_1, predict1_1(x_1))
                 r2_1_r = r2_score(y_2, predict1_2(x_2))
                 
-                n = order
+                if self.ShowCB.isChecked():
+
+                    #Best fit calculations
+                    res1 = y_1 - predict1_1(x_1)
+                    res2 = y_2 - predict1_2(x_2)
+                    
+                    DOF1 = len(y_1) - (n + 1)
+                    DOF2 = len(y_2) - (n + 1)
+
+                    #Error Calculations
+                    SSR1 = np.sum(res1**2)
+                    SSR2 = np.sum(res2**2)
+
+                    #Confidence Interval Calculations
+                    it1 = t.ppf(0.975, DOF1)
+                    SEE1 = np.sqrt(SSR1 / DOF1)
+                    SST_xfit1 = (xp_1 - np.mean(x_1))**2
+                    CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    CI1_LB = predict1_1(xp_1)- CI1
+                    CI1_UB = predict1_1(xp_1) + CI1
+                    #Prediction Interval Calculations
+                    SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    PI1_LB = predict1_1(xp_1) - it1 * SEP1
+                    PI1_UB = predict1_1(xp_1) + it1 * SEP1
+                    
+                    it2 = t.ppf(0.975, DOF2)
+                    SEE2 = np.sqrt(SSR2 / DOF2)
+                    SST_xfit2 = (xp_2 - np.mean(x_2))**2
+                    CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                    CI2_LB = predict1_2(xp_2)- CI2
+                    CI2_UB = predict1_2(xp_2) + CI2
+                    #Prediction Interval Calculations
+                    SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                    PI2_LB = predict1_2(xp_2) - it2 * SEP2
+                    PI2_UB = predict1_2(xp_2) + it2 * SEP2
+
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(xp_1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(xp_1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(xp_2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_2 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(xp_2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_2 95% Prediction Interval')
+                
                 if n == 1:
                     if poly1_1[n] > 0:
                         # Print statement for console
@@ -238,6 +293,72 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                     r2_1 = r2_score(y_1, predict1_1(x_1))
                     r2_2 = r2_score(y_2, predict1_2(x_2))
                     r2_3 = r2_score(y_2, predict1_2(x_2))
+                    
+                    if self.ShowCB.isChecked():
+
+                        #Best fit calculations
+                        res1 = y_1 - predict1_1(x_1)
+                        res2 = y_2 - predict1_2(x_2)
+                        res3 = y_3 - predict1_3(x_3)
+                        
+                        DOF1 = len(y_1) - (n + 1)
+                        DOF2 = len(y_2) - (n + 1)
+                        DOF3 = len(y_3) - (n + 1)
+
+                        #Error Calculations
+                        SSR1 = np.sum(res1**2)
+                        SSR2 = np.sum(res2**2)
+                        SSR3 = np.sum(res3**2)
+
+                        #Confidence Interval Calculations
+                        it1 = t.ppf(0.975, DOF1)
+                        SEE1 = np.sqrt(SSR1 / DOF1)
+                        SST_xfit1 = (xp_1 - np.mean(x_1))**2
+                        CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        CI1_LB = predict1_1(xp_1)- CI1
+                        CI1_UB = predict1_1(xp_1) + CI1
+                        #Prediction Interval Calculations
+                        SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        PI1_LB = predict1_1(xp_1) - it1 * SEP1
+                        PI1_UB = predict1_1(xp_1) + it1 * SEP1
+                        
+                        it2 = t.ppf(0.975, DOF2)
+                        SEE2 = np.sqrt(SSR2 / DOF2)
+                        SST_xfit2 = (xp_2 - np.mean(x_2))**2
+                        CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        CI2_LB = predict1_2(xp_2)- CI2
+                        CI2_UB = predict1_2(xp_2) + CI2
+                        #Prediction Interval Calculations
+                        SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        PI2_LB = predict1_2(xp_2) - it2 * SEP2
+                        PI2_UB = predict1_2(xp_2) + it2 * SEP2
+
+                        it3 = t.ppf(0.975, DOF3)
+                        SEE3 = np.sqrt(SSR3 / DOF3)
+                        SST_xfit3 = (xp_3 - np.mean(x_3))**2
+                        CI3 = it3 * SEE3 * np.sqrt(1/len(y_3) + (SST_xfit3) / np.sum((x_3 - np.mean(x_3))**2))
+                        CI3_LB = predict1_3(xp_3)- CI3
+                        CI3_UB = predict1_3(xp_3) + CI3
+                        #Prediction Interval Calculations
+                        SEP3 = SEE3 * np.sqrt(1 + 1/len(y_3) + (SST_xfit3) / np.sum((x_3 - np.mean(x_3))**2))
+                        PI3_LB = predict1_3(xp_3) - it3 * SEP3
+                        PI3_UB = predict1_3(xp_3) + it3 * SEP3
+
+                        # Plotting the confidence bounds - 1
+                        self.ax.fill_between(xp_1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(xp_1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                        # Plotting the confidence bounds - 2
+                        self.ax.fill_between(xp_2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_2 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(xp_2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_2 95% Prediction Interval')
+                        
+                        # Plotting the confidence bounds - 3
+                        self.ax.fill_between(xp_3, CI3_LB, CI3_UB, color='gray', alpha=0.3, label='y_3 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(xp_3, PI3_LB, PI3_UB, color='orange', alpha=0.3, label='y_3 95% Prediction Interval')
+                    
                 
                     n = order
                     if n == 1:
@@ -330,6 +451,53 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                         r2_1_l = r2_score(y_1, predict1_1(x_1))
                         r2_1_r = r2_score(y_2, predict1_2(x_2))
                         
+                        if self.ShowCB.isChecked():
+
+                            #Best fit calculations
+                            res1 = y_1 - predict1_1(x_1)
+                            res2 = y_2 - predict1_2(x_2)
+                            
+                            DOF1 = len(y_1) - (n + 1)
+                            DOF2 = len(y_2) - (n + 1)
+
+                            #Error Calculations
+                            SSR1 = np.sum(res1**2)
+                            SSR2 = np.sum(res2**2)
+
+                            #Confidence Interval Calculations
+                            it1 = t.ppf(0.975, DOF1)
+                            SEE1 = np.sqrt(SSR1 / DOF1)
+                            SST_xfit1 = (xp_1 - np.mean(x_1))**2
+                            CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                            CI1_LB = predict1_1(xp_1)- CI1
+                            CI1_UB = predict1_1(xp_1) + CI1
+                            #Prediction Interval Calculations
+                            SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                            PI1_LB = predict1_1(xp_1) - it1 * SEP1
+                            PI1_UB = predict1_1(xp_1) + it1 * SEP1
+                            
+                            it2 = t.ppf(0.975, DOF2)
+                            SEE2 = np.sqrt(SSR2 / DOF2)
+                            SST_xfit2 = (xp_2 - np.mean(x_2))**2
+                            CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                            CI2_LB = predict1_2(xp_2)- CI2
+                            CI2_UB = predict1_2(xp_2) + CI2
+                            #Prediction Interval Calculations
+                            SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                            PI2_LB = predict1_2(xp_2) - it2 * SEP2
+                            PI2_UB = predict1_2(xp_2) + it2 * SEP2
+
+                            # Plotting the confidence bounds
+                            self.ax.fill_between(xp_1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                            # Plotting the prediction bounds
+                            self.ax.fill_between(xp_1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                            # Plotting the confidence bounds
+                            self.ax.fill_between(xp_2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_2 95% Confidence Interval')
+                            # Plotting the prediction bounds
+                            self.ax.fill_between(xp_2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_2 95% Prediction Interval')
+                        
+                        
                         n = order
                         if n == 1:
                             if poly1_1[n] > 0:
@@ -385,7 +553,35 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                     predict1_l = np.poly1d(poly1)
                     R2 = r2_score(y_arr, predict1_l(x_arr))
                     self.ax.plot(xp, predict1_l(xp), 'r-')
-                    n = order
+                    
+                    if self.ShowCB.isChecked():
+
+                        #Best fit calculations
+                        res1 = y_arr - predict1_l(x_arr)
+                        
+                        DOF1 = len(y_arr) - (n + 1)
+
+                        #Error Calculations
+                        SSR1 = np.sum(res1**2)
+
+                        #Confidence Interval Calculations
+                        it1 = t.ppf(0.975, DOF1)
+                        SEE1 = np.sqrt(SSR1 / DOF1)
+                        SST_xfit1 = (xp - np.mean(x_arr))**2
+                        CI1 = it1 * SEE1 * np.sqrt(1/len(y_arr) + (SST_xfit1) / np.sum((x_arr - np.mean(x_arr))**2))
+                        CI1_LB = predict1_l(xp)- CI1
+                        CI1_UB = predict1_l(xp) + CI1
+                        #Prediction Interval Calculations
+                        SEP1 = SEE1 * np.sqrt(1 + 1/len(y_arr) + (SST_xfit1) / np.sum((x_arr - np.mean(x_arr))**2))
+                        PI1_LB = predict1_l(xp) - it1 * SEP1
+                        PI1_UB = predict1_l(xp) + it1 * SEP1
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(xp, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(xp, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                    
                     if n == 1:
                         if poly1[n] > 0:
                             # Print statement for console
@@ -420,7 +616,35 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 predict1_l = np.poly1d(poly1)
                 R2 = r2_score(y_arr, predict1_l(x_arr))
                 self.ax.plot(xp, predict1_l(xp), 'r-')
-                n = order
+
+                if self.ShowCB.isChecked():
+
+                    #Best fit calculations
+                    res1 = y_arr - predict1_l(x_arr)
+                    
+                    DOF1 = len(y_arr) - (n + 1)
+
+                    #Error Calculations
+                    SSR1 = np.sum(res1**2)
+
+                    #Confidence Interval Calculations
+                    it1 = t.ppf(0.975, DOF1)
+                    SEE1 = np.sqrt(SSR1 / DOF1)
+                    SST_xfit1 = (xp - np.mean(x_arr))**2
+                    CI1 = it1 * SEE1 * np.sqrt(1/len(y_arr) + (SST_xfit1) / np.sum((x_arr - np.mean(x_arr))**2))
+                    CI1_LB = predict1_l(xp)- CI1
+                    CI1_UB = predict1_l(xp) + CI1
+                    #Prediction Interval Calculations
+                    SEP1 = SEE1 * np.sqrt(1 + 1/len(y_arr) + (SST_xfit1) / np.sum((x_arr - np.mean(x_arr))**2))
+                    PI1_LB = predict1_l(xp) - it1 * SEP1
+                    PI1_UB = predict1_l(xp) + it1 * SEP1
+                
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(xp, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(xp, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+
                 if n == 1:
                     if poly1[n] > 0:
                         # Print statement for console
@@ -520,6 +744,33 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                     yr.append(yo)
                 R2 = r2_score(y_1, yr)
                 
+                if self.ShowCB.isChecked():
+
+                    #Best fit calculations
+                    res1 = np.array(y_1) - np.array(yr)
+                    DOF1 = len(y_1) - (n + 1)
+
+                    #Error Calculations
+                    SSR1 = np.sum(res1**2)
+
+                    #Confidence Interval Calculations
+                    it1 = t.ppf(0.975, DOF1)
+                    SEE1 = np.sqrt(SSR1 / DOF1)
+                    SST_xfit1 = (x_list - np.mean(x_1))**2
+                    CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    CI1_LB = y_list- CI1
+                    CI1_UB = y_list + CI1
+                    #Prediction Interval Calculations
+                    SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    PI1_LB = y_list - it1 * SEP1
+                    PI1_UB = y_list + it1 * SEP1
+                
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(x_list, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(x_list, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                
                 prnt_result = 'y = '
     
                 alph = list(map(chr, range(97, 123)))
@@ -559,11 +810,22 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 max_id = list(data_smooth2[['y']].idxmax())[0]
                 print(max_id)
                 
-                # Split the original data set using the new max_id index:    
-                x_1 = self.x[:max_id].copy()
-                x_2 = self.x[max_id:].copy()
-                y_1 = self.y[:max_id].copy()
-                y_2 = self.y[max_id:].copy()
+                # Find the minimum point in the smoothed data set
+                min_id = list(data_smooth2[['y']].idxmin())[0]
+                print(min_id)
+                
+                if self.y[max_id] > self.y[0]:
+                    # Split the original data set using the new max_id index:    
+                    x_1 = self.x[:max_id].copy()
+                    x_2 = self.x[max_id:].copy()
+                    y_1 = self.y[:max_id].copy()
+                    y_2 = self.y[max_id:].copy()
+                else:
+                    # Split the original data set using the new min_id index:    
+                    x_1 = self.x[:min_id].copy()
+                    x_2 = self.x[min_id:].copy()
+                    y_1 = self.y[:min_id].copy()
+                    y_2 = self.y[min_id:].copy()
                 
                 coeff1, cov1 = curve_fit(func, x_1, y_1, p0=in_coeff)
                 coeff2, cov2 = curve_fit(func, x_2, y_2, p0=in_coeff)
@@ -596,6 +858,57 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                     yo2 = func(i, *coeff2)
                     yr2.append(yo2)
                 R22 = r2_score(y_2, yr2)
+    
+                if self.ShowCB.isChecked():
+
+                    #Best fit calculations
+                    res1 = np.array(y_1) - np.array(yr1)
+                    DOF1 = len(y_1) - (n + 1)
+
+                    #Error Calculations
+                    SSR1 = np.sum(res1**2)
+
+                    #Confidence Interval Calculations
+                    it1 = t.ppf(0.975, DOF1)
+                    SEE1 = np.sqrt(SSR1 / DOF1)
+                    SST_xfit1 = (x_list1 - np.mean(x_1))**2
+                    CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    CI1_LB = y_list1- CI1
+                    CI1_UB = y_list1 + CI1
+                    #Prediction Interval Calculations
+                    SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                    PI1_LB = y_list1 - it1 * SEP1
+                    PI1_UB = y_list1 + it1 * SEP1
+                
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(x_list1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(x_list1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                    res2 = np.array(y_2) - np.array(yr2)
+                    DOF2 = len(y_2) - (n + 1)
+
+                    #Error Calculations
+                    SSR2 = np.sum(res2**2)
+
+                    #Confidence Interval Calculations
+                    it2 = t.ppf(0.975, DOF2)
+                    SEE2 = np.sqrt(SSR2 / DOF2)
+                    SST_xfit2 = (x_list2 - np.mean(x_2))**2
+                    CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                    CI2_LB = y_list2- CI2
+                    CI2_UB = y_list2 + CI2
+                    #Prediction Interval Calculations
+                    SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                    PI2_LB = y_list2 - it2 * SEP2
+                    PI2_UB = y_list2 + it2 * SEP2
+                
+                    # Plotting the confidence bounds
+                    self.ax.fill_between(x_list2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                    # Plotting the prediction bounds
+                    self.ax.fill_between(x_list2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+
     
                 prnt_result1 = 'y_1 = '
                 prnt_result2 = 'y_2 = '
@@ -702,6 +1015,56 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                         yo2 = func(i, *coeff2)
                         yr2.append(yo2)
                     R22 = r2_score(y_2, yr2)
+            
+                    if self.ShowCB.isChecked():
+    
+                        #Best fit calculations
+                        res1 = np.array(y_1) - np.array(yr1)
+                        DOF1 = len(y_1) - (n + 1)
+    
+                        #Error Calculations
+                        SSR1 = np.sum(res1**2)
+    
+                        #Confidence Interval Calculations
+                        it1 = t.ppf(0.975, DOF1)
+                        SEE1 = np.sqrt(SSR1 / DOF1)
+                        SST_xfit1 = (x_list1 - np.mean(x_1))**2
+                        CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        CI1_LB = y_list1- CI1
+                        CI1_UB = y_list1 + CI1
+                        #Prediction Interval Calculations
+                        SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        PI1_LB = y_list1 - it1 * SEP1
+                        PI1_UB = y_list1 + it1 * SEP1
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+    
+                        res2 = np.array(y_2) - np.array(yr2)
+                        DOF2 = len(y_2) - (n + 1)
+    
+                        #Error Calculations
+                        SSR2 = np.sum(res2**2)
+    
+                        #Confidence Interval Calculations
+                        it2 = t.ppf(0.975, DOF2)
+                        SEE2 = np.sqrt(SSR2 / DOF2)
+                        SST_xfit2 = (x_list2 - np.mean(x_2))**2
+                        CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        CI2_LB = y_list2- CI2
+                        CI2_UB = y_list2 + CI2
+                        #Prediction Interval Calculations
+                        SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        PI2_LB = y_list2 - it2 * SEP2
+                        PI2_UB = y_list2 + it2 * SEP2
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
         
                     prnt_result1 = 'y_1 = '
                     prnt_result2 = 'y_2 = '
@@ -806,6 +1169,78 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                         yr3.append(yo3)
                     R23 = r2_score(y_3, yr3)       
         
+                    if self.ShowCB.isChecked():
+    
+                        #Best fit calculations
+                        res1 = np.array(y_1) - np.array(yr1)
+                        DOF1 = len(y_1) - (n + 1)
+    
+                        #Error Calculations
+                        SSR1 = np.sum(res1**2)
+    
+                        #Confidence Interval Calculations
+                        it1 = t.ppf(0.975, DOF1)
+                        SEE1 = np.sqrt(SSR1 / DOF1)
+                        SST_xfit1 = (x_list1 - np.mean(x_1))**2
+                        CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        CI1_LB = y_list1- CI1
+                        CI1_UB = y_list1 + CI1
+                        #Prediction Interval Calculations
+                        SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        PI1_LB = y_list1 - it1 * SEP1
+                        PI1_UB = y_list1 + it1 * SEP1
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list1, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list1, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+    
+                        res2 = np.array(y_2) - np.array(yr2)
+                        DOF2 = len(y_2) - (n + 1)
+    
+                        #Error Calculations
+                        SSR2 = np.sum(res2**2)
+    
+                        #Confidence Interval Calculations
+                        it2 = t.ppf(0.975, DOF2)
+                        SEE2 = np.sqrt(SSR2 / DOF2)
+                        SST_xfit2 = (x_list2 - np.mean(x_2))**2
+                        CI2 = it2 * SEE2 * np.sqrt(1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        CI2_LB = y_list2- CI2
+                        CI2_UB = y_list2 + CI2
+                        #Prediction Interval Calculations
+                        SEP2 = SEE2 * np.sqrt(1 + 1/len(y_2) + (SST_xfit2) / np.sum((x_2 - np.mean(x_2))**2))
+                        PI2_LB = y_list2 - it2 * SEP2
+                        PI2_UB = y_list2 + it2 * SEP2
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list2, CI2_LB, CI2_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list2, PI2_LB, PI2_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                        res3 = np.array(y_3) - np.array(yr3)
+                        DOF3 = len(y_3) - (n + 1)
+    
+                        #Error Calculations
+                        SSR3 = np.sum(res3**2)
+    
+                        #Confidence Interval Calculations
+                        it3 = t.ppf(0.975, DOF3)
+                        SEE3 = np.sqrt(SSR3 / DOF3)
+                        SST_xfit3 = (x_list3 - np.mean(x_3))**2
+                        CI3 = it3 * SEE3 * np.sqrt(1/len(y_3) + (SST_xfit3) / np.sum((x_3 - np.mean(x_3))**2))
+                        CI3_LB = y_list3- CI3
+                        CI3_UB = y_list3 + CI3
+                        #Prediction Interval Calculations
+                        SEP3 = SEE3 * np.sqrt(1 + 1/len(y_3) + (SST_xfit3) / np.sum((x_3 - np.mean(x_3))**2))
+                        PI3_LB = y_list3 - it3 * SEP3
+                        PI3_UB = y_list3 + it3 * SEP3
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list3, CI3_LB, CI3_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list3, PI3_LB, PI3_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+                    
                     prnt_result1 = 'y_1 = '
                     prnt_result2 = 'y_2 = '
                     prnt_result3 = 'y_3 = '
@@ -864,7 +1299,78 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                     prnt_result3 = prnt_result3 + f" (r^2 = {R23:.5f})"
                     print(prnt_result3)
                     self.printeqnR2.setText(prnt_result1 + '\n' + prnt_result2 + '\n' + prnt_result3)
+               
+                else:
+                    coeff, cov = curve_fit(func, x_1, y_1, p0=in_coeff)
+        
+                    x_list = np.linspace(min(x_1), max(x_1), 50)
+                    y_list = []
+        
+                    for i in x_list:
+                        y = func(i, *coeff)
+                        y_list.append(y)
+        
+                    self.ax.plot(x_list, y_list, 'r-')
                     
+                    yr = []
+                    for i in x_1:
+                        yo = func(i, *coeff)
+                        yr.append(yo)
+                    R2 = r2_score(y_1, yr)
+                    
+                    if self.ShowCB.isChecked():
+
+                        #Best fit calculations
+                        res1 = np.array(y_1) - np.array(yr)
+                        DOF1 = len(y_1) - (n + 1)
+
+                        #Error Calculations
+                        SSR1 = np.sum(res1**2)
+
+                        #Confidence Interval Calculations
+                        it1 = t.ppf(0.975, DOF1)
+                        SEE1 = np.sqrt(SSR1 / DOF1)
+                        SST_xfit1 = (x_list - np.mean(x_1))**2
+                        CI1 = it1 * SEE1 * np.sqrt(1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        CI1_LB = y_list- CI1
+                        CI1_UB = y_list + CI1
+                        #Prediction Interval Calculations
+                        SEP1 = SEE1 * np.sqrt(1 + 1/len(y_1) + (SST_xfit1) / np.sum((x_1 - np.mean(x_1))**2))
+                        PI1_LB = y_list - it1 * SEP1
+                        PI1_UB = y_list + it1 * SEP1
+                    
+                        # Plotting the confidence bounds
+                        self.ax.fill_between(x_list, CI1_LB, CI1_UB, color='gray', alpha=0.3, label='y_1 95% Confidence Interval')
+                        # Plotting the prediction bounds
+                        self.ax.fill_between(x_list, PI1_LB, PI1_UB, color='orange', alpha=0.3, label='y_1 95% Prediction Interval')
+
+                    
+                    prnt_result = 'y = '
+        
+                    alph = list(map(chr, range(97, 123)))
+                    alph.remove('e')
+                    alph.remove('x')
+                    textnew = self.text.replace('**','^')
+                    # Split off the 'y = ' from the text:
+                    eq = textnew.split('= ')[1]
+                    i = 0
+                    # For each character in the text, if the character is in the alphabet list (coefficient name list) then assign the next value in the coefficients tuple (*nums) to it and create a cariable.
+                    for char in eq:
+                        if char in alph:
+                            exec(f"{char} = {coeff[i]}")
+                            if coeff[i] > 0:
+                                prnt_result = prnt_result + ' + ' + str(round(coeff[i], 5))
+                            else:
+                                prnt_result = prnt_result + ' - ' + str(round(abs(coeff[i]), 5))
+                            i = i + 1
+                        elif char in ['*','x','^','1','2','3','4','5','6','7','8','9','0','']:
+                            prnt_result = prnt_result + char
+                        else:
+                            prnt_result = prnt_result
+                    prnt_result = prnt_result + f" (r^2 = {R2:.5f})"
+                    print(prnt_result)
+                    self.printeqnR2.setText(prnt_result)
+
             if BC == 0:
                 bc = 'Normal'
             elif BC == 1:
@@ -872,10 +1378,11 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 bc = 'Jump'
             title = f"Curve Fit with BC = {bc}, Input: {custom}"
-            self.ax.set_title(title, fontsize=14)
+            self.ax.set_title(title, fontsize=12)
               
-        self.ax.set_xlabel('x', fontsize=14)
-        self.ax.set_ylabel('y', fontsize=14)
+        self.ax.set_xlabel('x', fontsize=12)
+        self.ax.set_ylabel('y', fontsize=12)
+        self.ax.legend()
         self.canvas.draw()
     
     def clear(self):
