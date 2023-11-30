@@ -22,11 +22,11 @@ You can add new files or input points manually as well in the specified format.
 **- INSTALL PYQT5 & QT DESIGNER**
 
 
-Anaconda on Windows
+Anaconda on Windows: 
 PyQt is already integrated with Spyder/Anaconda. If you’re running the code with spyder on windows, installation is not necessary. For operating systems, PyQt has to be installed before running the code which might involve restarting the system as well.
 
 
-Installation
+Installation: 
 The simplest way to install PyQt5 on Linux/windows or macOS is to use Python's pip packaging tool, just as for other packages. For Python3 installations this is usually called pip3.
 
 After installing, you should be able to run python and import PyQt5. Note that if you want to access Qt Designer or Qt Creator you will need to download this from https://qt.io/download [the Qt downloads site]. You do not need Qt Designer to run our demo. It’s only necessary when creating new GUI designs.
