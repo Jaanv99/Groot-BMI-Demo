@@ -1,4 +1,4 @@
-Team Pynapples - Lightning Talk Presentation
+Team Pynapples - **Lightning Talk** Presentation
 
 Package: PyQt5
 
@@ -7,7 +7,7 @@ https://docs.google.com/document/d/1sYwtFDPpKuq89KZXBkEbIZP7RiYTCpaZ6lGOF3qcyfg/
 
 ---------------------------------------------------------------------------------------------------------------------
 
-FINAL PROJECT:
+**FINAL PROJECT:**
 
 Download the code 'finalprojectCT.py' and the ui design file 'CFA.ui' to run the code successfully.
 
@@ -16,10 +16,10 @@ The excel files 'book1 - book4' are the files to upload in the GUI for fitting.
 You can add new files or input points manually as well in the specified format.
 
 
-HOW TO:
+**HOW TO:**
 
 
-- INSTALL PYQT5 & QT DESIGNER
+**- INSTALL PYQT5 & QT DESIGNER**
 
 
 Anaconda on Windows
@@ -32,14 +32,14 @@ The simplest way to install PyQt5 on Linux/windows or macOS is to use Python's p
 After installing, you should be able to run python and import PyQt5. Note that if you want to access Qt Designer or Qt Creator you will need to download this from https://qt.io/download [the Qt downloads site]. You do not need Qt Designer to run our demo. It’s only necessary when creating new GUI designs.
 
 
-- USE THE GUI
+**- USE THE GUI**
 
 
 Download demo: 
 From the Github repository link above, download the code ‘finalprojectCT.py’ and the GUI design file ‘CFA.ui’ into the same folder on your PC. Try curve fits for any random data sets or use the available excel files ‘Book 1, Book 2,…’ by downloading them to the same folder.
 
 
-Available options:-
+**Available options:-**
 
 1. Input points: Two methods, either through a .xlsx file upload with the x and y points in the first 2 columns, or manually entering points in the text box in x, y format.
 
@@ -61,7 +61,7 @@ Available options:-
 
 
 
-CHOOSING THE RIGHT FIT
+**CHOOSING THE RIGHT FIT**
 
 Judge the final plot based on your requirements and through the following:
 
@@ -74,7 +74,7 @@ Judge the final plot based on your requirements and through the following:
 Play around with all the options to find the required fits and choose what’s best for you.
 
 
-** LIMITATIONS **
+**LIMITATIONS**
 
 
 1. Data Type:
