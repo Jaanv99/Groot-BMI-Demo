@@ -34,11 +34,12 @@ After installing, you should be able to run python and import PyQt5. Note that i
 - USE THE GUI
 
 
-Download demo
+Download demo: 
 From the Github repository link above, download the code ‘finalprojectCT.py’ and the GUI design file ‘CFA.ui’ into the same folder on your PC. Try curve fits for any random data sets or use the available excel files ‘Book 1, Book 2,…’ by downloading them to the same folder.
 
 
-Available options
+Available options:-
+
 Input points: Two methods, either through a .xlsx file upload with the x and y points in the first 2 columns, or manually entering points in the text box in x, y format.
 
 Order of fit: Choose from 1-10. It is set by default to order ‘1’ (linear). Check to make sure these boxes are always populated with the desired values. When a custom equation is given, the input order box value is neglected.
@@ -58,7 +59,7 @@ Fit equation: The curve fit equations are displayed in the ‘equation’ box ab
 Clear: Erases all the inputs and displays of the GUI to start over.
 
 
-Choosing the right fit
+CHOOSING THE RIGHT FIT
 
 Judge the final plot based on your requirements and through the following:
 
@@ -101,6 +102,7 @@ Within the text input string, replace e with np.e.
 A similar piece of code is already currently implemented to allow the user to type in the ^ symbol rather than using **.
 
 
-Follow the link to access the Instructions page:
+Follow the link to access the Instructions/Report page:
 
-https://docs.google.com/document/d/13IM7WkqbsnbaxIicxbzFzxRgnJso4K65VD-KULmg8Rg/edit
+https://docs.google.com/document/d/1fQR8wsq5lEA5E-BxqpOA4gX_Fjq1FBxM/edit
+
