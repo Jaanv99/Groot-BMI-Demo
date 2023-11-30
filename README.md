@@ -60,7 +60,7 @@ Available options:-
 9. Clear: Erases all the inputs and displays of the GUI to start over.
 
 
-- CHOOSING THE RIGHT FIT
+- CHOOSE THE RIGHT FIT
 
 Judge the final plot based on your requirements and through the following:
 
