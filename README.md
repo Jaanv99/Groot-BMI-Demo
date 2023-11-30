@@ -95,11 +95,11 @@ Play around with all the options to find the required fits and choose what’s b
 
 - The custom text input equation code is currently unable to take an input that has an ‘e’ in the equation. However, since the numpy package is utilized in the program code, it can recognize np.e as e. Because of this, np.e should be utilized in the text input instead.
 
--- To simplify this, an additional line of code can be added to the custom equation text input code:
+  -- To simplify this, an additional line of code can be added to the custom equation text input code:
 
--- Within the text input string, replace e with np.e.
+  -- Within the text input string, replace e with np.e.
 
--- A similar piece of code is already currently implemented to allow the user to type in the ^ symbol rather than using **.
+  -- A similar piece of code is already currently implemented to allow the user to type in the ^ symbol rather than using **.
 
 
 Follow the link to access the Instructions/Report page:
